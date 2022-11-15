@@ -1,0 +1,711 @@
+version: "3.4"
+services:
+  #启动注册中心eureka-server集群 集中管理/服务注册/服务发现
+  discovery1:
+    restart: always
+    hostname: discovery1
+    container_name: discovery1
+    image: ${HUB_URL}/sinfcloud/sinfcloud-discovery:${TAG}
+    entrypoint: "java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    deploy:
+      endpoint_mode: vip
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    ports:
+      - "7001:7001"
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-discovery/agent
+    environment:
+      - "ADDITIONAL_EUREKA_SERVER_LIST=http://sinfcloud:supermap1234@discovery2:7002/eureka/,http://sinfcloud:supermap1234@discovery3:7003/eureka/"
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SERVER_PORT=7001"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+  discovery2:
+    restart: always
+    hostname: discovery2
+    container_name: discovery2
+    image: ${HUB_URL}/sinfcloud/sinfcloud-discovery:${TAG}
+    entrypoint: "java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-discovery/agent
+    deploy:
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    ports:
+      - "7002:7002"
+    environment:
+      - "ADDITIONAL_EUREKA_SERVER_LIST=http://sinfcloud:supermap1234@discovery1:7001/eureka/,http://sinfcloud:supermap1234@discovery3:7003/eureka/"
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SERVER_PORT=7002"
+    depends_on:
+      - discovery1
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+  discovery3:
+    restart: always
+    hostname: discovery3
+    container_name: discovery3
+    image: ${HUB_URL}/sinfcloud/sinfcloud-discovery:${TAG}
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-discovery/agent
+    deploy:
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    ports:
+      - "7003:7003"
+    entrypoint: "java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    environment:
+      - "ADDITIONAL_EUREKA_SERVER_LIST=http://sinfcloud:supermap1234@discovery1:7001/eureka/,http://sinfcloud:supermap1234@discovery2:7002/eureka/"
+      - "SPRING_PROFILES_ACTIVE=docker"
+      - "SERVER_PORT=7003"
+    depends_on:
+      - discovery2
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+  distribution:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/distribution:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    entrypoint: "sh ./wait-for discovery1:7001 -- /seata-server/bin/seata-server.sh "
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    volumes:
+      - ${Root_Current_Dir}/seata/conf:/seata-server/conf
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+  sinfcloud-config:
+    restart: always
+    hostname: sinfcloud-config
+    image: ${HUB_URL}/sinfcloud/sinfcloud-config:${TAG}
+    entrypoint: "sh ./wait-for discovery1:7001 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-config/agent
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7010" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+      - "DATASOURCE_DRIVER=${DATASOURCE_DRIVER}"
+      - "DATASOURCE_URL=${DATASOURCE_URL}"
+      - "DATASOURCE_USERNAME=${DATASOURCE_USERNAME}"
+      - "DATASOURCE_PASSWORD=${DATASOURCE_PASSWORD}"
+      - "DATASOURCE_DIALECT=${DATASOURCE_DIALECT}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+  sinfcloud-license:
+    image: ${HUB_URL}/sinfcloud/sinfcloud-license:${TAG}
+    hostname: sinfcloud-license
+    restart: always
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    entrypoint: "sh ./wait-for sinfcloud-config:7010 -- java -Dfile.encoding=utf-8 -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:9300" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+    volumes:
+      - ${Root_Current_Dir}/agent:/service-license/agent
+      - ${Root_Current_Dir}/license:/server-license/license
+
+  acm-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/acm-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-acm-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8023" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  acm-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/acm-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-acm-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7023" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  bpm-running-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/bpm-running-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-bpmrunning-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8105" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  bpm-support-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/bpm-support-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-bpmsupport-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8106" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  bpm-running-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/bpm-running-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-bpmrunning-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7105" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  bpm-support-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/bpm-support-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-bpmsupport-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7106" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  message-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/message-consumer-app:${TAG}
+    deploy:
+      replicas: 1
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-message-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8052" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  message-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/message-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-message-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7052" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  number-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/number-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-number-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8021" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  number-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/number-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-number-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7021" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  sso-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/sso-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-sso-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8201" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  sso-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/sso-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-sso-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7201" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+
+  sinfcloud-gateway:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/sinfcloud-gateway:${TAG}
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    deploy:
+      endpoint_mode: vip
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-gateway/agent
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  sinfcloud-sequence:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/sinfcloud-sequence:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/server-sequence/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7020" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  admin-provider-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/admin-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-admin-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:7302" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  admin-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/admin-consumer-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-admin-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8302" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+
+  file-consumer-app:
+    restart: always
+    image: ${HUB_URL}/sinfcloud/file-consumer-app:${TAG}
+    deploy:
+      replicas: 2
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/consumer-file-v1/agent
+    entrypoint: "sh ./wait-for sinfcloud-license:9300 -- java -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    healthcheck:
+      test: [ "CMD","sh","./wait-for","127.0.0.1:8050" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+  file-provider-app:
+    restart: always
+    #image: 172.16.101.19/sinfcloud/file-provider-app:latest-openjre
+    image: 172.16.101.19/sinfcloud/file-provider-app:${TAG}
+    deploy:
+      replicas: 6
+      update_config:
+        delay: 20s
+        order: start-first
+      placement:
+        constraints:
+          - node.labels.role == sinfcloud
+    volumes:
+      - ${Root_Current_Dir}/agent:/provider-file-v1/agent
+    entrypoint: "java -Xms1028M -Xmx4096M -Djava.security.egd=file:/dev/./urandom -jar ./app.jar"
+    environment:
+      - "EUREKA_SERVERS=${EUREKA_SERVERS}"
+    extra_hosts:
+      - "sinfcloud-mongo:${SINFCLOUD_MONGO}"
+      - "sinfcloud-redis:${SINFCLOUD_REDIS}"
+      - "sinfcloud-postgres:${SINFCLOUD_POSTGRES}"
+
+
+
+networks:
+  default:
+    external:
+      name: sinfcloud_net
+

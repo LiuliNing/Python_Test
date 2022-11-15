@@ -1,0 +1,18 @@
+version: '3.2'
+services:
+  node-exporter:
+    image: hub.sinfcloud.com/support/node-exporter
+    container_name: node-exporter
+    hostname: node-exporter
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    ports:
+      - "9100:9100"

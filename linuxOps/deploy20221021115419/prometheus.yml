@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [ 'localhost:9090' ]
+        labels:
+          instance: prometheus
+
+  - job_name: linux
+    static_configs:
+      - targets: [ '172.16.101.32:9100' ]
+        labels:
+          instance: SinfCloud-32
+      - targets: [ '172.16.101.2:9100' ]
+        labels:
+          instance: SinfCloud-2
+      - targets: [ '192.168.254.160:9100' ]
+        labels:
+          instance: SinfCloud-160
+      - targets: [ '172.16.101.44:9100' ]
+        labels:
+          instance: SinfCloud-44
+  - job_name: docker_status
+    static_configs:
+      - targets: [ '172.16.101.32:9200' ]
+        labels:
+          instance: SinfCloud—Docker-32
+      - targets: [ '172.16.101.2:9200' ]
+        labels:
+          instance: SinfCloud-Docker-2
+      - targets: [ '192.168.254.160:9200' ]
+        labels:
+          instance: SinfCloud-Docker-160
