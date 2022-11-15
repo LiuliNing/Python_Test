@@ -3,6 +3,9 @@
 ```
 createBy lln
 createTime 2022-10-28
+
+Server: Centos7 
+Python Version: >2.7
 ```
 
 ```
@@ -26,7 +29,7 @@ python dateSync_server.py
 
 执行过程如下图
 
-![](\1.png)
+![](./1.png)
 
 ### 二、客户端（执行同步时间的设备）
 
@@ -37,7 +40,7 @@ python dateSync_client.py
 
 执行过程如下图
 
-![](\2.png)
+![](./2.png)
 
 ```
 执行命令，输入时间服务器IP地址，进行时间同步
@@ -51,6 +54,6 @@ ip地址输入需要合法，否则程序会给与提示
 
 执行过程如下图
 
-![](\3.png)
+![](./3.png)
 
-![](\4.png)
+![](./4.png)
