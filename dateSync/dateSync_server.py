@@ -13,12 +13,16 @@ def checkTimeZone():
     """
     校验时区
     """
-    timeZone = os.popen("date -R")
+    timeZone1 = os.popen("date -R")
+    time1 = timeZone1.readline()
+    timeZone2 = os.popen("timedatectl | grep 'Time zone'")
+    time2 = timeZone2.readline()
     print("INFO: check current timeZone...")
-    if "Oct" not in timeZone.readline():
-        raise Exception("ERROR:The current timeZone is " + timeZone.readline() + ",not Oct, please modify...")
+    if "Oct" in time1 or "CST" in time1 or "Oct" in time2 or "CST" in time2:
+        pass
+    else:
+        raise Exception("ERROR:The current timeZone not Oct or Cst , please modify...")
     print("INFO: OK..")
-
 
 def checkPackage():
     """

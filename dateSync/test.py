@@ -5,6 +5,22 @@
 import os
 
 
+def checkTimeZone():
+    """
+    校验时区
+    """
+    timeZone1 = os.popen("date -R")
+    time1 = timeZone1.readline()
+    timeZone2 = os.popen("timedatectl | grep 'Time zone'")
+    time2 = timeZone2.readline()
+    print("INFO: check current timeZone...")
+    if "Oct" in time1 or "CST" in time1 or "Oct" in time2 or "CST" in time2:
+        pass
+    else:
+        raise Exception("ERROR:The current timeZone not Oct or Cst , please modify...")
+    print("INFO: OK..")
+
+
 def addNtpRpmPackage():
     # 进入当前目录
     localPath = os.getcwd()
@@ -73,6 +89,6 @@ def checkIpPath(ipPath):
 
 if __name__ == '__main__':
     try:
-        runningDateSync()
+        checkTimeZone()
     except Exception as err:
         print(err)

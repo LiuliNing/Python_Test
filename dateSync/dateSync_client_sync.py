@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-服务器ntpDate离线安装及配置
+客户端同步
 @Time    : 2022/10/17 9:27
 @Author  : superMap.lln
-@FileName: dateSync_server.py
+@FileName: dateSync_client_sync.py
 @SoftWare: PyCharm
 """
 import os
