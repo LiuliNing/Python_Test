@@ -25,8 +25,11 @@ def getTimeZone():
     """
     获取当前时区
     """
-    timeZone = os.popen("date -R")
-    return timeZone.readlines()
+    time_zone = getCommandLines("date -R")
+    res = {
+        '当前时区信息': time_zone
+    }
+    return res
 
 
 def getCpuStatus():
@@ -34,23 +37,23 @@ def getCpuStatus():
     获取CPU信息
     """
     # 物理CPU个数
-    Physical_CPUs = getCommandLines("grep 'physical id' /proc/cpuinfo| sort | uniq | wc -l")
+    physical_cpus = getCommandLines("grep 'physical id' /proc/cpuinfo| sort | uniq | wc -l")
     # 逻辑CPU个数
-    Virt_CPUs = getCommandLines("grep 'processor' /proc/cpuinfo | wc -l")
+    virt_cpus = getCommandLines("grep 'processor' /proc/cpuinfo | wc -l")
     # 每CPU核心数
-    CPU_Kernels = getCommandLines("grep 'cores' /proc/cpuinfo|uniq| awk -F ': ' '{print $2}'")
+    cpu_kernels = getCommandLines("grep 'cores' /proc/cpuinfo|uniq| awk -F ': ' '{print $2}'")
     # CPU型号
-    CPU_Type = getCommandLines("grep 'model name' /proc/cpuinfo | awk -F ': ' '{print $2}' | sort | uniq")
+    cpu_type = getCommandLines("grep 'model name' /proc/cpuinfo | awk -F ': ' '{print $2}' | sort | uniq")
     # CPU架构
-    CPU_Arch = getCommandLines("uname -m")
-    Res = {
-        'Physical_CPUs': Physical_CPUs,
-        'Virt_CPUs': Virt_CPUs,
-        'CPU_Kernels': CPU_Kernels,
-        'CPU_Type': CPU_Type,
-        'CPU_Arch': CPU_Arch
+    cpu_arch = getCommandLines("uname -m")
+    res = {
+        '物理CPU个数': physical_cpus,
+        '逻辑CPU个数': virt_cpus,
+        '每CPU核心数': cpu_kernels,
+        'CPU型号': cpu_type,
+        'CPU架构': cpu_arch
     }
-    return Res
+    return res
 
 
 def createReportFile(name, text):
