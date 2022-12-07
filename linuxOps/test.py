@@ -5,8 +5,10 @@ linux 自动化脚本
 # @Author: lln
 # @File: linuxOps.py.py
 """
+import json
 import os
-import time
+
+import linuxOps
 
 
 def getTimeZone():
@@ -53,5 +55,7 @@ def createReportFile(name, text):
 
 
 if __name__ == '__main__':
-    outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
-    createReportFile(outputFileName, 'hello,world')
+    # outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
+    # createReportFile(outputFileName, 'hello,world')
+    json_str = json.dumps(linuxOps.getCpuStatus())
+    print(json_str)
