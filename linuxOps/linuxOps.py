@@ -22,6 +22,9 @@ def runCommand(command):
 
 
 def getSystemStatus():
+    """
+    系统信息
+    """
     # 系统
     OS = runCommand("uname -o")
     # 发行版本
@@ -131,5 +134,24 @@ def getDiskStatus():
         '索引使用量(MB)': int(InodeUsed_Num / 1021),
         '索引剩余量(MB)': int(InodeFree / 1021),
         '索引使用比例(%)': InodePercent,
+    }
+    return Res
+
+
+def getNetworkStatus():
+    """
+    网络检查
+    """
+    GATEWAY = runCommand("ip route | grep default | awk '{print $3}'")
+    DNS = runCommand("grep nameserver /etc/resolv.conf| grep -v '#' | awk '{print $2}' | tr '\n' ',' | sed 's/,$//'")
+    IP = runCommand(
+        "ip -f inet addr | grep -v 127.0.0.1 | grep inet | awk '{print $NF,$2}' | tr '\n' ',' | sed 's/,$//'")
+    # TODO 语句有问题会报错，sed的错误，需要检查下执行情况
+    # MAC = runCommand("ip link | grep -v 'LOOPBACK\|loopback' | awk '{print $2}' | sed 'N;s/\n//' | tr '\n' ',' | sed 's/,$//'")
+    Res = {
+        'GATEWAY': GATEWAY,
+        'DNS': DNS,
+        'IP': IP
+        # 'MAC': MAC
     }
     return Res
