@@ -3,12 +3,12 @@
 linux 自动化脚本
 # @Time: 2022/11/4 10:20
 # @Author: lln
-# @File: linuxOps.py.py
+# @File: linuxOps.py
 """
 import os
 
 
-def getCommandLines(command):
+def runCommand(command):
     """
     执行命令，将所有读到的数据去除空行
     :param command: 命令
@@ -21,15 +21,34 @@ def getCommandLines(command):
     return res
 
 
-def getTimeZone():
-    """
-    获取当前时区
-    """
-    time_zone = getCommandLines("date -R")
-    res = {
-        '当前时区信息': time_zone
+def getSystemStatus():
+    # 系统
+    OS = runCommand("uname -o")
+    # 发行版本
+    Release = runCommand("cat /etc/redhat-release 2>/dev/null")
+    # 内核
+    Kernel = runCommand("uname -r")
+    # 主机名
+    Hostname = runCommand("uname -n")
+    # 当前时间
+    LocalTime = runCommand("date +'%F %T'")
+    # 最后启动
+    LastReboot = runCommand("who -b | awk '{print $3,$4}'")
+    # 运行时间
+    Uptime = runCommand("date +'%F %T'")
+    # 当前时区信息
+    time_zone = runCommand("date -R")
+    Res = {
+        "系统": OS,
+        "发行版本": Release,
+        "内核": Kernel,
+        "主机名": Hostname,
+        "当前时间": LocalTime,
+        "最后启动": LastReboot,
+        "运行时间": Uptime,
+        "时区信息": time_zone
     }
-    return res
+    return Res
 
 
 def getCpuStatus():
@@ -37,45 +56,80 @@ def getCpuStatus():
     获取CPU信息
     """
     # 物理CPU个数
-    physical_cpus = getCommandLines("grep 'physical id' /proc/cpuinfo| sort | uniq | wc -l")
+    physical_cpus = runCommand("grep 'physical id' /proc/cpuinfo| sort | uniq | wc -l")
     # 逻辑CPU个数
-    virt_cpus = getCommandLines("grep 'processor' /proc/cpuinfo | wc -l")
+    virt_cpus = runCommand("grep 'processor' /proc/cpuinfo | wc -l")
     # 每CPU核心数
-    cpu_kernels = getCommandLines("grep 'cores' /proc/cpuinfo|uniq| awk -F ': ' '{print $2}'")
+    cpu_kernels = runCommand("grep 'cores' /proc/cpuinfo|uniq| awk -F ': ' '{print $2}'")
     # CPU型号
-    cpu_type = getCommandLines("grep 'model name' /proc/cpuinfo | awk -F ': ' '{print $2}' | sort | uniq")
+    cpu_type = runCommand("grep 'model name' /proc/cpuinfo | awk -F ': ' '{print $2}' | sort | uniq")
     # CPU架构
-    cpu_arch = getCommandLines("uname -m")
-    res = {
+    cpu_arch = runCommand("uname -m")
+    Res = {
         '物理CPU个数': physical_cpus,
         '逻辑CPU个数': virt_cpus,
         '每CPU核心数': cpu_kernels,
         'CPU型号': cpu_type,
         'CPU架构': cpu_arch
     }
-    return res
+    return Res
 
 
-def createReportFile(name, text):
+def getMemStatus():
     """
-    创建report的txt文件,并写入数据
+    内存信息
     """
-    # os.getcwd() 获取当前的工作路径；
-    folder = os.getcwd() + '\\report\\'
-    # 判断当前路径是否存在，没有则创建new文件夹
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-    # 在当前py文件所在路径下的new文件中创建txt
-    reportFile = folder + name + '.txt'
-    # 打开文件，open()函数用于打开一个文件，创建一个file对象，相关的方法才可以调用它进行读写。
-    file = open(reportFile, 'w')
-    # 写入内容信息
-    file.write(text)
-    file.close()
-    print('文件创建成功', reportFile)
+    # 总内存
+    MemTotal = runCommand("grep MemTotal /proc/meminfo| awk '{print $2}'")
+    MemTotal_Num = map(float, MemTotal)[0]
+    # 可用内存
+    MemFree = runCommand("grep MemFree /proc/meminfo| awk '{print $2}'")
+    MemFree_Num = map(float, MemFree)[0]
+    # 比例
+    Proportion = '{:.2%}'.format(MemFree_Num / MemTotal_Num)
+    Res = {
+        '总内存(MB)': int(MemTotal_Num / 1024),
+        '可用内存(MB)': int(MemFree_Num / 1024),
+        '已用比例(%)': Proportion
+    }
+    return Res
 
 
-def createReportJson():
+def getDiskStatus():
     """
-    组合查询结果，构造结果JSON
+    磁盘检查
     """
+    # 生成临时数据记录文件
+    # os.popen("df -TP | sed '1d' | awk '$2!='tmpfs'{print}'")
+    # os.popen("df -hTP | sed 's/Mounted on/Mounted/'> /tmp/disk")
+    # 硬盘总量
+    DiskTotal = runCommand("df -TP | sed '1d' | awk '$2!='tmpfs'{print}'| awk '{total+=$3}END{print total}'")
+    DiskTotalNum = map(float, DiskTotal)[0]
+    # 硬盘使用量
+    DiskUsed = runCommand("df -TP | sed '1d' | awk '$2!='tmpfs'{print}'| awk '{total+=$4}END{print total}'")
+    DiskUsedNum = map(float, DiskUsed)[0]
+    # 硬盘空余量
+    DiskFree = DiskTotalNum - DiskUsedNum
+    # 硬盘使用比例
+    DiskUsedPercent = '{:.2%}'.format(DiskUsedNum / DiskTotalNum)
+    # 索引总量
+    InodeTotal = runCommand("df -iTP | sed '1d' | awk '$2!='tmpfs'{print}' | awk '{total+=$3}END{print total}' ")
+    InodeTotal_Num = map(float, InodeTotal)[0]
+    # 索引使用量
+    InodeUsed = runCommand("df -iTP | sed '1d' | awk '$2!='tmpfs'{print}' | awk '{total+=$4}END{print total}' ")
+    InodeUsed_Num = map(float, InodeUsed)[0]
+    # 索引剩余量
+    InodeFree = InodeTotal_Num - InodeUsed_Num
+    # 索引使用比例
+    InodePercent = '{:.2%}'.format(InodeUsed_Num / InodeTotal_Num)
+    Res = {
+        '硬盘总量(GB)': int(DiskTotalNum / 1024 / 1024),
+        '硬盘使用量(GB)': int(DiskUsedNum / 1024 / 1024),
+        '硬盘空余量(GB)': int(DiskFree / 1024 / 1024),
+        '硬盘使用比例(%)': DiskUsedPercent,
+        '索引总量(MB)': int(InodeTotal_Num / 1021),
+        '索引使用量(MB)': int(InodeUsed_Num / 1021),
+        '索引剩余量(MB)': int(InodeFree / 1021),
+        '索引使用比例(%)': InodePercent,
+    }
+    return Res

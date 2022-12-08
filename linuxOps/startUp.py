@@ -11,40 +11,11 @@ import time
 
 import linuxOps
 
-def getSystemStatus():
-    """
-    系统检查
-    """
-
-def getCpuStatus():
-    """
-    获取CPU信息
-    """
-    # 物理CPU个数
-    Physical_CPUs = os.popen("grep 'physical id' /proc/cpuinfo| sort | uniq | wc -l")
-    # 逻辑CPU个数
-    Virt_CPUs = os.popen("grep 'processor /proc/cpuinfo | wc -l")
-    # 每CPU核心数
-    CPU_Kernels = os.popen("grep 'cores' /proc/cpuinfo|uniq| awk -F ': ' '{print $2}'")
-    # CPU型号
-    CPU_Type = os.popen("grep 'model name' /proc/cpuinfo | awk -F ': ' '{print $2}' | sort | uniq")
-    # CPU架构
-    CPU_Arch = os.popen("uname -m")
-
-
-def getTimeZone():
-    """
-    获取当前时区
-    """
-    timeZone = os.popen("date -R")
-    return timeZone.readlines()
-
 
 def createReportFile(name, text):
     """
     创建report的txt文件,并写入数据
     """
-    # os.getcwd() 获取当前的工作路径；
     report_dir = os.getcwd() + os.sep + "report" + os.sep
     # 判断当前路径是否存在，没有则创建new文件夹
     if not os.path.exists(report_dir):
@@ -62,6 +33,9 @@ def createReportFile(name, text):
 if __name__ == '__main__':
     outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
     report = list()
+    # 组装所有查询函数
+    report.append(linuxOps.getSystemStatus())
     report.append(linuxOps.getCpuStatus())
-    report.append(linuxOps.getTimeZone())
-    createReportFile(outputFileName, json.dumps(report))
+    report.append(linuxOps.getMemStatus())
+    report.append(linuxOps.getDiskStatus())
+    createReportFile(outputFileName, json.dumps(report, ensure_ascii=False))
