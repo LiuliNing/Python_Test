@@ -147,11 +147,40 @@ def getNetworkStatus():
     IP = runCommand(
         "ip -f inet addr | grep -v 127.0.0.1 | grep inet | awk '{print $NF,$2}' | tr '\n' ',' | sed 's/,$//'")
     # TODO 语句有问题会报错，sed的错误，需要检查下执行情况
-    # MAC = runCommand("ip link | grep -v 'LOOPBACK\|loopback' | awk '{print $2}' | sed 'N;s/\n//' | tr '\n' ',' | sed 's/,$//'")
-    Res = {
+    MAC = runCommand(
+        "ip link | grep -v 'LOOPBACK\|loopback' | awk '{print $2}' | sed 'N;s/\n//' | tr '\n' ',' | sed 's/,$//'")
+    res = {
         'GATEWAY': GATEWAY,
         'DNS': DNS,
-        'IP': IP
-        # 'MAC': MAC
+        'IP': IP,
+        'MAC': MAC
     }
-    return Res
+    return res
+
+
+def getProcessStatus():
+    memory_top10 = runCommand("ps aux | awk '{print $2, $4, $6, $11}' | sort -k3rn | head -n 10")
+    cpu_top10 = runCommand("top b -n1 | head -17 | tail -11")
+    defunctProsess = runCommand("ps -ef | grep defunct | grep -v grep|wc -l")
+    res = {
+        "内存占用TOP10": memory_top10,
+        "cpu占用TOP10": cpu_top10,
+        "僵尸进程数量": defunctProsess,
+    }
+    return res
+
+
+def getServiceStatus():
+    # 自启动服务数量
+    SelfInitiatedServiceNum = runCommand(
+        "systemctl list-unit-files --type=service --state=enabled --no-pager | grep 'enabled'| wc -l")
+    # 运行中服务数量
+    RuningServiceNum = runCommand(
+        "systemctl list-units --type=service --state=running --no-pager | grep '.service' | wc -l")
+    SelfInitiatedProgramNum = runCommand("grep -v '^#' /etc/rc.d/rc.local| sed '/^$/d' | wc -l")
+    res = {
+        "自启动服务数量": SelfInitiatedServiceNum,
+        "运行中服务数量": RuningServiceNum,
+        "自启动程序数量":SelfInitiatedProgramNum
+    }
+    return res

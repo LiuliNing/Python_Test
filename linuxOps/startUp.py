@@ -38,4 +38,5 @@ if __name__ == '__main__':
     report.append(linuxOps.getCpuStatus())
     report.append(linuxOps.getMemStatus())
     report.append(linuxOps.getDiskStatus())
+    report.append(linuxOps.getNetworkStatus())
     createReportFile(outputFileName, json.dumps(report, ensure_ascii=False))
