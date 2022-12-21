@@ -7,6 +7,7 @@ linux 自动化脚本
 """
 import json
 import os
+import platform
 import time
 
 
@@ -23,9 +24,30 @@ def runCommand(command):
     return res
 
 
+def getSystemInfo():
+    """
+    使用内置库获取系统信息
+    """
+    platform.platform()  # 获取操作系统名称及版本号，
+    platform.version()  # 获取操作系统版本号，
+    platform.architecture()  # 获取操作系统的位数
+    platform.machine()  # 计算机类型，
+    platform.node()  # 计算机的网络名称，
+    platform.processor()  # 计算机处理器信息，
+    res = {
+        "操作系统名称及版本号": platform.platform(),
+        "操作系统版本号": platform.version(),
+        "操作系统的位数": platform.architecture(),
+        "计算机类型": platform.machine(),
+        "网络名称": platform.node(),
+        "处理器信息": platform.processor(),
+    }
+    return res
+
+
 def getSystemStatus():
     """
-    系统信息
+    系统信息，仅支持centos进行查询
     """
     # 系统
     OS = runCommand("uname -o")
@@ -272,9 +294,23 @@ def createReportFile(name, text):
     print('report_file create success', report_file)
 
 
+def printSinfcloud():
+    print("+------------------------------------------------+")
+    print("|       欢迎使用SinfCloud自动巡检工具            |")
+    print("| ____  _        __  ____ _                 _    |")
+    print("|/ ___|(_)_ __  / _|/ ___| | ___  _   _  __| |   |")
+    print("|\___ \| |  _ \| |_| |   | |/ _ \| | | |/ _  |   |")
+    print("| ___) | | | | |  _| |___| | (_) | |_| | (_| |   |")
+    print("||____/|_|_| |_|_|  \____|_|\___/ \__,_|\__,_|   |")
+    print("|                                                |")
+    print("+------------------------------------------------+")
+
+
 if __name__ == '__main__':
+    printSinfcloud()
     outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
     report = list()
+    report.append(getSystemInfo())
     report.append(getSystemStatus())
     report.append(getCpuStatus())
     report.append(getMemStatusSimple())
