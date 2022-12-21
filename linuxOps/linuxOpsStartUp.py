@@ -3,9 +3,11 @@
 linux 自动化脚本
 # @Time: 2022/11/4 10:20
 # @Author: lln
-# @File: linuxOps.py
+# @File: linuxOpsStartUp.py
 """
+import json
 import os
+import time
 
 
 def runCommand(command):
@@ -203,6 +205,9 @@ def getFirewallStatus():
 
 
 def sshStatus():
+    """
+    ssh 检查
+    """
     sshActive = runCommand("systemctl is-active sshd.service")
     sshNetstat = runCommand("sudo netstat -atlunp | grep sshd")
     res = {
@@ -213,6 +218,9 @@ def sshStatus():
 
 
 def ntpStatus():
+    """
+    ntp 检查
+    """
     ntpActive = runCommand("systemctl is-active ntpd")
     res = {
         'ntp运行情况': ntpActive
@@ -221,6 +229,9 @@ def ntpStatus():
 
 
 def dockerStatus():
+    """
+    docker 检查
+    """
     dk_version = runCommand("docker -v")
     dk_stats = []
     for info in dk_version:
@@ -241,3 +252,39 @@ def dockerStatus():
         'docker stats': dk_stats
     }
     return res
+
+
+def createReportFile(name, text):
+    """
+    创建report的txt文件,并写入数据
+    """
+    report_dir = os.getcwd() + os.sep + "report" + os.sep
+    # 判断当前路径是否存在，没有则创建new文件夹
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir)
+    # 在当前py文件所在路径下的new文件中创建txt
+    report_file = report_dir + name + '.txt'
+    # 打开文件，open()函数用于打开一个文件，创建一个file对象，相关的方法才可以调用它进行读写。
+    file = open(report_file, 'w')
+    # 写入内容信息
+    file.write(text)
+    file.close()
+    print('report_file create success', report_file)
+
+
+if __name__ == '__main__':
+    outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
+    report = list()
+    report.append(getSystemStatus())
+    report.append(getCpuStatus())
+    report.append(getMemStatusSimple())
+    report.append(getDiskStatus())
+    report.append(getNetworkStatus())
+    report.append(getUserStatus())
+    report.append(getJdkStatus())
+    report.append(getFirewallStatus())
+    report.append(sshStatus())
+    report.append(ntpStatus())
+    report.append(dockerStatus())
+    createReportFile(outputFileName,
+                     json.dumps(report, sort_keys=True, indent=4, separators=(',', ':'), ensure_ascii=False))
