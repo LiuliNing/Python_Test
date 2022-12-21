@@ -53,4 +53,5 @@ if __name__ == '__main__':
     report.append(linuxOps.sshStatus())
     report.append(linuxOps.ntpStatus())
     report.append(linuxOps.dockerStatus())
-    createReportFile(outputFileName, json.dumps(report, ensure_ascii=False))
+    createReportFile(outputFileName,
+                     json.dumps(report, sort_keys=True, indent=4, separators=(',', ':'), ensure_ascii=False))
