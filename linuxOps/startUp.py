@@ -30,13 +30,27 @@ def createReportFile(name, text):
     print('report_file create success', report_file)
 
 
+def appendFile(name, text):
+    report_dir = os.getcwd() + os.sep + "report" + os.sep
+    report_file = report_dir + name + '.txt'
+    file = open(report_file, 'a')
+    file.write("\n")
+    file.write(text)
+    file.close()
+
+
 if __name__ == '__main__':
     outputFileName = time.strftime('%Y-%m-%d', time.localtime(time.time())) + "_report"
     report = list()
-    # 组装所有查询函数
     report.append(linuxOps.getSystemStatus())
     report.append(linuxOps.getCpuStatus())
-    report.append(linuxOps.getMemStatus())
+    report.append(linuxOps.getMemStatusSimple())
     report.append(linuxOps.getDiskStatus())
     report.append(linuxOps.getNetworkStatus())
+    report.append(linuxOps.getUserStatus())
+    report.append(linuxOps.getJdkStatus())
+    report.append(linuxOps.getFirewallStatus())
+    report.append(linuxOps.sshStatus())
+    report.append(linuxOps.ntpStatus())
+    report.append(linuxOps.dockerStatus())
     createReportFile(outputFileName, json.dumps(report, ensure_ascii=False))
