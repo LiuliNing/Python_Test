@@ -116,20 +116,20 @@ def getDiskStatus():
     # 硬盘总量
     DiskAllInfo = runCommand("df -h | grep -v docker")
     DiskTotal = runCommand("df -TP | sed '1d' | awk '$2!='tmpfs'{print}'| awk '{total+=$3}END{print total}'")
-    DiskTotalNum = map(float, DiskTotal)[0]
+    DiskTotalNum = int(DiskTotal[0])
     # 硬盘使用量
     DiskUsed = runCommand("df -TP | sed '1d' | awk '$2!='tmpfs'{print}'| awk '{total+=$4}END{print total}'")
-    DiskUsedNum = map(float, DiskUsed)[0]
+    DiskUsedNum = int(DiskUsed[0])
     # 硬盘空余量
     DiskFree = DiskTotalNum - DiskUsedNum
     # 硬盘使用比例
     DiskUsedPercent = '{:.2%}'.format(DiskUsedNum / DiskTotalNum)
     # 索引总量
     InodeTotal = runCommand("df -iTP | sed '1d' | awk '$2!='tmpfs'{print}' | awk '{total+=$3}END{print total}' ")
-    InodeTotal_Num = map(float, InodeTotal)[0]
+    InodeTotal_Num = int(InodeTotal[0])
     # 索引使用量
     InodeUsed = runCommand("df -iTP | sed '1d' | awk '$2!='tmpfs'{print}' | awk '{total+=$4}END{print total}' ")
-    InodeUsed_Num = map(float, InodeUsed)[0]
+    InodeUsed_Num = int(InodeUsed[0])
     # 索引剩余量
     InodeFree = InodeTotal_Num - InodeUsed_Num
     # 索引使用比例
