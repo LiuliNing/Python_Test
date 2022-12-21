@@ -238,6 +238,6 @@ def dockerStatus():
     res = {
         'docker version': dk_version,
         'docker-compose version': dp_version,
-        'docket stats': dk_stats
+        'docker stats': dk_stats
     }
     return res
