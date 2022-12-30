@@ -220,6 +220,10 @@ def getFirewallStatus():
     防火墙
     """
     firewall = runCommand("firewall-cmd --state 2>&1")
+    # 兼容 ubuntu 防火墙命令报错 sh: not found 特殊处理
+    for info in firewall:
+        if "not found" in info:
+            firewall = runCommand("ufw status")
     res = {
         '防火墙状态': firewall
     }
