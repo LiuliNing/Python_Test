@@ -28,12 +28,6 @@ def getSystemInfo():
     """
     使用内置库获取系统信息
     """
-    platform.platform()  # 获取操作系统名称及版本号，
-    platform.version()  # 获取操作系统版本号，
-    platform.architecture()  # 获取操作系统的位数
-    platform.machine()  # 计算机类型，
-    platform.node()  # 计算机的网络名称，
-    platform.processor()  # 计算机处理器信息，
     res = {
         "操作系统名称及版本号": platform.platform(),
         "操作系统版本号": platform.version(),
