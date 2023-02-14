@@ -1,0 +1,63 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sinfcloud-redis
+  namespace: sinfcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sinfcloud-redis
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sinfcloud-redis
+      annotations:
+        logging.kubesphere.io/logsidecar-config: '{}'
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: volume-ipypof
+          persistentVolumeClaim:
+            claimName: sincloud-pvc
+      containers:
+        - name: sinfcloud-redis
+          image: hub.sinfcloud.com/sinfcloud/sinfcloud-redis:2.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-0
+              containerPort: 6379
+              protocol: TCP
+          resources: { }
+          command: [ "/bin/sh" ]
+          args: [ "-c","redis-server --requirepass supermap1234!" ]
+          volumeMounts:
+            - name: host-time
+              readOnly: true
+              mountPath: /etc/localtime
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+# 创建对应的端口映射
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sinfcloud-redis
+  name: sinfcloud-redis
+  namespace: sinfcloud
+spec:
+  ports:
+    - name: port-redis-6379
+      port: 6379
+      protocol: TCP
+      targetPort: 6379
+      nodePort: 30020
+  selector:
+    app: sinfcloud-redis  #指定服务名称
+  sessionAffinity: None
+  type: NodePort
