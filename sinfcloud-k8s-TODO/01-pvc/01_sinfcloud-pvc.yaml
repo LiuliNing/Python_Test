@@ -1,0 +1,46 @@
+############################
+####### 默认nfs为存储 ########
+############################
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: sc-pv-sinfcloud-data
+  namespace: sinfcloud
+  annotations:
+    pv.kubernetes.io/provisioned-by: cluster.local/nfs-client-nfs-client-provisioner
+  finalizers:
+    - kubernetes.io/pv-protection
+spec:
+  capacity:
+    storage: 10Gi
+  nfs:
+    server: 192.168.111.128
+    # 确保当前路径存在
+    path: /opt/nfs_data
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: nfs-client
+  volumeMode: Filesystem
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: sincloud-pvc
+  namespace: sinfcloud
+  annotations:
+    kubesphere.io/creator: admin
+    pv.kubernetes.io/bind-completed: 'yes'
+    pv.kubernetes.io/bound-by-controller: 'yes'
+    volume.beta.kubernetes.io/storage-provisioner: cluster.local/nfs-client-nfs-client-provisioner
+  finalizers:
+    - kubernetes.io/pvc-protection
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: sc-pv-sinfcloud-data
+  storageClassName: nfs-client
+  volumeMode: Filesystem
