@@ -1,0 +1,66 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sinfcloud-mongo
+  namespace: sinfcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sinfcloud-mongo
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sinfcloud-mongo
+      annotations:
+        logging.kubesphere.io/logsidecar-config: '{}'
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: volume-ipypof
+          persistentVolumeClaim:
+            claimName: sincloud-pvc
+      containers:
+        - name: sinfcloud-mongo
+          image: hub.sinfcloud.com/sinfcloud/sinfcloud-mongo:2.1.0
+          ports:
+            - name: http-27017
+              containerPort: 27017
+              protocol: TCP
+          resources: { }
+          env:
+            - name: TZ
+              value: Asia/Shanghai
+          volumeMounts:
+            - name: host-time
+              readOnly: true
+              mountPath: /etc/localtime
+            - name: volume-ipypof
+              mountPath: /data/db
+              subPath: mongo/data
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+# 创建对应的端口映射
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sinfcloud-mongo
+  name: sinfcloud-mongo
+  namespace: sinfcloud
+spec:
+  ports:
+    - name: port-27017
+      port: 27017
+      protocol: TCP
+      targetPort: 27017
+      nodePort: 30040
+  selector:
+    app: sinfcloud-mongo
+  sessionAffinity: None
+  type: NodePort
