@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-etc
+  namespace: sinfcloud
+data:
+  enabled_plugins: |
+    [rabbitmq_management].
+  rabbitmq.conf: |
+    loopback_users.guest = false
+    listeners.tcp.default = 5672
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-sh
+  namespace: sinfcloud
+data:
+  init-db.sh: |
+    #!/bin/bash
+    rabbitmqctl add_vhost sinflog;
+    rabbitmqctl set_permissions -p sinflog sinfcloud '.*' '.*' '.*'
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare exchange --vhost=sinflog name=sinf_log durable=true auto_delete=false type=direct
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare exchange --vhost=sinflog name=gateway_log durable=true auto_delete=false type=direct
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare exchange --vhost=sinflog name=slow_log durable=true auto_delete=false type=direct
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare exchange --vhost=/ name=sinfcloud durable=true auto_delete=false type=direct
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare queue --vhost=/ name=sinfcloud.coreservice.socketservice.message.topic durable=true auto_delete=false
+    rabbitmqadmin  -u sinfcloud -p supermap1234! declare binding --vhost=/ source=sinfcloud destination=sinfcloud.coreservice.socketservice.message.topic routing_key=SinfCloudRouting
+    echo -e "${red_col}初始化成功\n${reset_col}"
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sinfcloud-rabbitmq
+  namespace: sinfcloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sinfcloud-rabbitmq
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sinfcloud-rabbitmq
+      annotations:
+        logging.kubesphere.io/logsidecar-config: '{}'
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: volume-ipypof
+          persistentVolumeClaim:
+            claimName: sincloud-pvc
+        - name: config-etc
+          configMap:
+            name: rabbitmq-etc
+        - name: config-sh
+          configMap:
+            name: rabbitmq-sh
+      containers:
+        - name: sinfcloud-rabbitmq
+          image: hub.sinfcloud.com/support/rabbitmq:3-management
+          ports:
+            - name: http-5672
+              containerPort: 5672
+              protocol: TCP
+            - name: http-15672
+              containerPort: 15672
+              protocol: TCP
+          resources: { }
+          volumeMounts:
+            - name: host-time
+              readOnly: true
+              mountPath: /etc/localtime
+            - name: config-etc
+              mountPath: /etc/rabbitmq
+            - name: config-sh
+              mountPath: /home/
+            - name: volume-ipypof
+              mountPath: /var/log/rabbitmq
+              subPath: rabbitmq/log
+            - name: volume-ipypof
+              mountPath: /var/lib/rabbitmq
+              subPath: rabbitmq/lib
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+# 创建对应的端口映射
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: sinfcloud-rabbitmq
+  name: sinfcloud-rabbitmq
+  namespace: sinfcloud
+spec:
+  ports:
+    - name: port-5672
+      port: 5672
+      protocol: TCP
+      targetPort: 5672
+      nodePort: 30030
+    - name: port-15672
+      port: 15672
+      protocol: TCP
+      targetPort: 15672
+      nodePort: 30031
+  selector:
+    app: sinfcloud-rabbitmq  #指定服务名称
+  sessionAffinity: None
+  type: NodePort
