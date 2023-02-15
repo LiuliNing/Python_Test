@@ -1,18 +1,31 @@
+# 资源类型
 kind: Deployment
+# k8s版本信息
 apiVersion: apps/v1
+# 元数据对象
 metadata:
+  # 元数据名称
   name: sinfcloud-redis
+  # 所属命名空间
   namespace: sinfcloud
+# 资源详细描述
 spec:
+  # 启动副本数量
   replicas: 1
+  # 节点标签选择说明
   selector:
+    # 选择包含标签 sinfcloud-redis 的资源
     matchLabels:
       app: sinfcloud-redis
+  # 创建pod模板信息
   template:
+    # pod元数据信息
     metadata:
       creationTimestamp: null
+      # 关联资源
       labels:
         app: sinfcloud-redis
+      # 自定义key value 可用于描述资源信息
       annotations:
         logging.kubesphere.io/logsidecar-config: '{}'
     spec:
@@ -22,24 +35,36 @@ spec:
             path: /etc/localtime
             type: ''
         - name: volume-ipypof
+          # 持久卷绑定
           persistentVolumeClaim:
             claimName: sincloud-pvc
+      # 容器信息
       containers:
         - name: sinfcloud-redis
+          # TODO 版本信息改为环境变量，统一配置
           image: hub.sinfcloud.com/sinfcloud/sinfcloud-redis:2.1.0
+          # 拉取模式：Always（默认） 总是拉取镜像；本地有则使用本地镜像,不拉取；Never 只使用本地镜像，从不拉取，即使本地没有
           imagePullPolicy: IfNotPresent
+          # 端口信息
           ports:
             - name: http-0
               containerPort: 6379
               protocol: TCP
           resources: { }
+          # 启动命令 TODO 优化
           command: [ "/bin/sh" ]
+          # 启动参数 TODO 改为 configmap存储
           args: [ "-c","redis-server --requirepass supermap1234!" ]
+          # 挂在卷信息
           volumeMounts:
+            # 挂载时间信息
             - name: host-time
+              # 读写模式 true 读写 false 只读
               readOnly: true
               mountPath: /etc/localtime
+      # 重启策略 Always（默认） OnFailure： 非正常停止自动重启，正常停止不重启 Never：从不重启
       restartPolicy: Always
+      # 等待停止时间（默认30s），时间内容器进进程未停止，强行终止
       terminationGracePeriodSeconds: 30
 ---
 # 创建对应的端口映射
