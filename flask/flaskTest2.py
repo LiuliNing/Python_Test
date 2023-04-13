@@ -1,14 +1,20 @@
 # 导入Flask类
-import json
-from flask import Flask, request as rq
-import flaskTest3
+
 from ctypes import cdll
+
+from flask import Flask, request as rq
+
+import flaskTest3
+
 # 实例化，可视为固定格式
 app = Flask(__name__)
 
+if __name__ == '__main__':
+    print("11")
+
 
 # 接口测试
-@app.route('/test', methods=['GET'])
+@app.route('/test/get', methods=['GET'])
 def hello_world():
     print("form:", rq.form)
     print("data:", rq.data)

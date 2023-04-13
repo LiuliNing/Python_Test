@@ -1,15 +1,14 @@
-from openpyxl import Workbook,load_workbook
-from openpyxl.styles import *
+from openpyxl import Workbook, load_workbook
 
 wb1 = Workbook()
-wb = load_workbook('C:/Users/Administrator/Desktop/test.xlsx')
+wb = load_workbook('E:\python_workspace\Send-emails-automatically-in-batches\emailTest.xlsx')
 
-ws = wb['边坡说明']
+ws = wb['资源研发中心【杭州办公区VPN网络申请单】']
 for sheet in wb:
     print(sheet.title)
 
-#openpyxl只能处理 .xlsx 合适的表格
-#获取所有工作表名
+# openpyxl只能处理 .xlsx 合适的表格
+# 获取所有工作表名
 names = wb.sheetnames
 # wb.get_sheet_by_name(name) 已经废弃,使用wb[name] 获取指定工作表
 sheet = wb[names[0]]
@@ -50,4 +49,3 @@ for one_row_data in sheet.iter_cols():
     print(one_row_data[0].value, end="\t")
 
 print("row = {}, column = {}".format(maxRow, maxColumn))
-

@@ -15,12 +15,17 @@
 # # 关闭工作薄
 # wb.close()
 import openpyxl
+
+
 class Case:
     pass
+
+
 class ReadExcel(object):
-    def __init__(self,filename,sheetname):
+    def __init__(self, filename, sheetname):
         self.wb = openpyxl.load_workbook(filename)
         self.sh = self.wb[sheetname]
+
     def read_data_obj(self):
         """
         按行读取数据  每条用例存储在一个对象中
@@ -37,7 +42,7 @@ class ReadExcel(object):
         cases = []
         for case in rows_data[1:]:
             # print(case)
-            #创建一个Case类的对象，用来保存用例数据
+            # 创建一个Case类的对象，用来保存用例数据
             case_obj = Case()
             data = []
             for cell in case:  # 获取一条测试用例数据
@@ -55,15 +60,17 @@ class ReadExcel(object):
             case_data = list(zip(titles, data))
             # print(case_data)
             for i in case_data:
-                setattr(case_obj,i[0],i[1])
+                setattr(case_obj, i[0], i[1])
             # print(case_obj)
             # print(case_obj.case_id,case_obj.data,case_obj.excepted)
             cases.append(case_obj)
         return cases
-if  __name__ == '__main__':
+
+
+if __name__ == '__main__':
     filePath = "C:/Users/Administrator/Desktop/理正接口格式信息整理-lln.xlsx"
     sheetName = "钻孔数据$ZK"
-    r = ReadExcel(filePath,sheetName)
+    r = ReadExcel(filePath, sheetName)
     res = r.read_data_obj()
     for i in res:
         print(i.caseid, i.excepted, i.data)
