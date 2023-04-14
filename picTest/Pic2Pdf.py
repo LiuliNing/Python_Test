@@ -15,9 +15,10 @@ os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
 SUPPORT_SUFFIX = ["jpg", "jpeg", "png"]
 
 
-def pic_to_pdf(image_bytes: bytes) -> bytes:
+def pic_to_pdf(image_bytes: bytes, file_suffix: str) -> bytes:
     """将单个图片转换为单张PDF
     :param image_bytes: 图片的bytes对象
+    :param file_suffix: 文件后缀，PNG从RGBA转换为RGB
     :return: PDF的bytes对象
     """
     # 将bytes对象转换为BytesIO对象
@@ -26,9 +27,14 @@ def pic_to_pdf(image_bytes: bytes) -> bytes:
     image_object = Image.open(image_bytes_io)
     # 打开内存中的文件用于保存PDF
     with BytesIO() as result_bytes_io:
-        # 将图片保存为单张PDF
-        image_object.save(result_bytes_io, "PDF", resolution=100.0)
-        # 获取内存中的文件
+        # png 需要PNG从RGBA转换为RGB
+        if file_suffix == SUPPORT_SUFFIX[2]:
+            image_object_png = Image.new('RGB', image_object.size, (255, 255, 255))
+            image_object_png.paste(image_object, mask=image_object.split()[3])
+            # 将图片保存为单张PDF
+            image_object_png.save(result_bytes_io, "PDF", resolution=100.0)
+        else:
+            image_object.save(result_bytes_io, "PDF", resolution=100.0)
         data = result_bytes_io.getvalue()
     # 返回PDF的bytes对象
     return data
@@ -36,7 +42,6 @@ def pic_to_pdf(image_bytes: bytes) -> bytes:
 
 def batch_convert(image_path: str, pdf_path: str) -> None:
     """批量将图片转换为单张PDF
-
     :param image_path: 图片的文件夹
     :param pdf_path: PDF文件保存的文件夹
     """
@@ -55,7 +60,7 @@ def batch_convert(image_path: str, pdf_path: str) -> None:
             # 将图片文件转换为PDF文件
             with open(source_file_path, "rb") as source:
                 with open(target_file_path, "wb") as target:
-                    target.write(pic_to_pdf(source.read()))
+                    target.write(pic_to_pdf(source.read(), file_suffix))
 
 
 if __name__ == '__main__':
